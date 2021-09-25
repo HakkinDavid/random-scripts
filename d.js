@@ -1,18 +1,72 @@
 const robot = require("robotjs");
 const fs = require('fs');
 const clipboardy = require('clipboardy');
-let file = fs.readFileSync('urls.txt', 'utf-8', console.error).replace(/youtu.be\//gi, "youtube.com/watch?v=").split('\n');
+let urlsList = fs.readFileSync('urls.txt', 'utf-8', console.error).replace(/youtu.be\//gi, "youtube.com/watch?v=").split('\n');
 robot.setMouseDelay(200);
-for (i=0; file.length > i; i++) {
-  robot.moveMouse(92, 75);
-  robot.mouseClick();
-  robot.keyTap("a", "control"); robot.keyTap("delete");
-  clipboardy.writeSync(file[i]);
-  robot.keyTap("v", "control");
-  if (robot.getMousePos().y !== 75) return;
-  robot.moveMouse(1882, 78);
-  robot.mouseClick();
-  if (robot.getMousePos().y !== 78) return;
-  robot.moveMouse(971, 523);
-  if (robot.getPixelColor(971, 523) == '0dd5d8') { robot.mouseClick(); }
+
+const ytdl = require('ytdl-core');
+const colors = require('colors');
+const stringSimilarity = require("string-similarity");
+
+const homedir = require('os').homedir();
+
+let fetchFolder = homedir + '/Downloads';
+
+let f = 0;
+let files = [];
+
+fs.readdirSync(fetchFolder).forEach(file => {
+  files.push(file.replace('.mp3', ''));
+  console.log(("(===) " + file.replace('.mp3', '')).green);
+});
+
+async function checkInfo(videos) {
+  for (i=0; videos.length > i; i++) {
+    let url = videos[i];
+    let probsError = false;
+    let info = await ytdl.getInfo(url).catch((err) => {
+      console.log("Fatal fetching error occured. Skipped: " + url);
+      console.log(err);
+      f++
+      probsError = true;
+    });
+    if (probsError) {
+      continue
+    }
+    let name = info.videoDetails.title;
+    name = name.replace(/\\|\/|\:|\*|\?|\"|\<|\>|\|/g, '');
+    let percent = 0;
+    if (files.length > 0) {
+      let matched = stringSimilarity.findBestMatch(name, files);
+      percent = matched.bestMatch.rating*100;
+      let prcntStr = "(" + percent + "%) " + name + "\n\u200b[" + files[matched.bestMatchIndex] + "]";
+      if (percent >= 80) {
+        console.log((prcntStr).blue);
+      }
+      else if (percent >= 50) {
+        console.log((prcntStr).yellow);
+      }
+      else {
+        console.log((prcntStr).magenta);
+      }
+    }
+    if (files.length === 0 || percent < 50) {
+      robot.moveMouse(92, 75);
+      robot.mouseClick();
+      robot.keyTap("a", "control"); robot.keyTap("delete");
+      clipboardy.writeSync(urlsList[i]);
+      robot.keyTap("v", "control");
+      if (robot.getMousePos().y !== 75) return;
+      robot.moveMouse(1882, 78);
+      robot.mouseClick();
+      if (robot.getMousePos().y !== 78) return;
+      robot.moveMouse(971, 523);
+      if (robot.getPixelColor(971, 523) == '0dd5d8') { robot.mouseClick(); }
+    }
+    else {
+      f++
+    }
+  }
 }
+
+checkInfo(urlsList).catch(console.error);
