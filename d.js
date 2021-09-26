@@ -27,14 +27,13 @@ async function checkInfo(videos) {
   for (i=0; videos.length > i; i++) {
     console.log('\n');
     let url = videos[i];
-    let probsError = false;
     let info;
     if (typeof metadataBase[url] === 'undefined') {
       info = await ytdl.getInfo(url).catch((err) => {
         console.log("Fatal fetching error occured. Skipped: " + url);
         console.log(err);
         f++
-        probsError = true;
+        continue;
       });
       metadataBase[url] = info;
       console.log("Fetched ".cyan + "YouTube".red + (" for " + url).cyan);
@@ -42,9 +41,6 @@ async function checkInfo(videos) {
     else {
       info = metadataBase[url];
       console.log(("Retrieved data from static database for " + url).cyan);
-    }
-    if (probsError) {
-      continue
     }
     let name = info.videoDetails.title;
     name = name.replace(/\\|\/|\:|\*|\?|\"|\<|\>|\|/g, '');
