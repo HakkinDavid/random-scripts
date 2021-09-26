@@ -80,10 +80,16 @@ async function checkInfo(videos) {
 }
 
 checkInfo(urlsList).catch(console.error);
-setInterval(async () => {
-  await fs.writeFile('linksMetaDataBase.txt', JSON.stringify(metadataBase, null, 4), ()=>{});
+setInterval(() => {
+  fs.writeFileSync('linksMetaDataBase.txt', JSON.stringify(metadataBase, null, 4), ()=>{});
   if (f === urlsList.length) {
     console.log("Finished");
     process.exit();
   }
 }, 5000);
+
+process.on("SIGINT", async () => {
+  // do not exit right away
+  console.log('exit' + 'ante'.gray);
+  process.exit();
+});
