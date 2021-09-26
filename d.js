@@ -16,8 +16,10 @@ let f = 0;
 let files = [];
 
 fs.readdirSync(fetchFolder).forEach(file => {
-  files.push(file.replace('.mp3', ''));
-  console.log(("(===) " + file.replace('.mp3', '')).green);
+  if (!file.includes('.mp3')) return;
+  file = file.replace(/\[[0-9]{0,3}K\]__\[.*\]\.mp3/g, '');
+  files.push(file);
+  console.log(("(===) " + file).green);
 });
 
 async function checkInfo(videos) {
@@ -43,14 +45,11 @@ async function checkInfo(videos) {
       if (percent >= 80) {
         console.log((prcntStr).blue);
       }
-      else if (percent >= 50) {
-        console.log((prcntStr).yellow);
-      }
       else {
         console.log((prcntStr).magenta);
       }
     }
-    if (files.length === 0 || percent < 50) {
+    if (files.length === 0 || percent < 80) {
       robot.moveMouse(92, 75);
       robot.mouseClick();
       robot.keyTap("a", "control"); robot.keyTap("delete");
