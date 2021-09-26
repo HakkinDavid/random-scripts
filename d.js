@@ -2,6 +2,7 @@ const robot = require("robotjs");
 const fs = require('fs');
 const clipboardy = require('clipboardy');
 let urlsList = fs.readFileSync('urls.txt', 'utf-8', console.error).replace(/youtu.be\//gi, "youtube.com/watch?v=").split('\n');
+let metadataBase = JSON.parse(fs.readFileSync('linksMetaDataBase.txt', console.error));
 robot.setMouseDelay(200);
 
 const ytdl = require('ytdl-core');
@@ -24,14 +25,25 @@ fs.readdirSync(fetchFolder).forEach(file => {
 
 async function checkInfo(videos) {
   for (i=0; videos.length > i; i++) {
+    console.log('\n');
     let url = videos[i];
     let probsError = false;
-    let info = await ytdl.getInfo(url).catch((err) => {
-      console.log("Fatal fetching error occured. Skipped: " + url);
-      console.log(err);
-      f++
-      probsError = true;
-    });
+    let info;
+    if (typeof metadataBase[url] === 'undefined') {
+      info = await ytdl.getInfo(url).catch((err) => {
+        console.log("Fatal fetching error occured. Skipped: " + url);
+        console.log(err);
+        f++
+        probsError = true;
+      });
+      metadataBase[url] = info;
+      await fs.writeFile('linksMetaDataBase.txt', JSON.stringify(metadataBase, null, 4), () => {});
+      console.log("Fetched ".cyan + "YouTube".red + (" and saved data into static database for " + url).cyan);
+    }
+    else {
+      info = metadataBase[url];
+      console.log(("Retrieved data from static database for " + url).cyan);
+    }
     if (probsError) {
       continue
     }
@@ -69,3 +81,9 @@ async function checkInfo(videos) {
 }
 
 checkInfo(urlsList).catch(console.error);
+setInterval(() => {
+  if (f === videos.length) {
+    console.log("Finished");
+    process.exit();
+  }
+}, 5000)
