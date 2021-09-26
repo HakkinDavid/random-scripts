@@ -37,8 +37,7 @@ async function checkInfo(videos) {
         probsError = true;
       });
       metadataBase[url] = info;
-      await fs.writeFile('linksMetaDataBase.txt', JSON.stringify(metadataBase, null, 4), () => {});
-      console.log("Fetched ".cyan + "YouTube".red + (" and saved data into static database for " + url).cyan);
+      console.log("Fetched ".cyan + "YouTube".red + (" for " + url).cyan);
     }
     else {
       info = metadataBase[url];
@@ -81,9 +80,10 @@ async function checkInfo(videos) {
 }
 
 checkInfo(urlsList).catch(console.error);
-setInterval(() => {
-  if (f === videos.length) {
+setInterval(async () => {
+  await fs.writeFile('linksMetaDataBase.txt', JSON.stringify(metadataBase, null, 4), ()=>{});
+  if (f === urlsList.length) {
     console.log("Finished");
     process.exit();
   }
-}, 5000)
+}, 5000);
