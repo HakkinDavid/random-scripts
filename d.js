@@ -12,10 +12,7 @@ import ytdl from 'ytdl-core';
 import colors from 'colors';
 import stringSimilarity from "string-similarity";
 
-import os from 'os';
-const homedir = os.homedir();
-
-let fetchFolder = homedir + '/Downloads';
+let fetchFolder = './files';
 
 let inExit = false;
 
@@ -26,9 +23,13 @@ let missing = [];
 
 fs.readdirSync(fetchFolder).forEach(file => {
   if (!file.includes('.mp3')) return;
-  file = file.replace(/\[[0-9]{0,3}K\]__\[.*\]\.[A-Za-z0-9]+$/g, '').replace(/\\|\/|\:|\*|\?|\"|\<|\>|\|/g, '');
+  file = file
+  .replace(/\[[0-9]{0,3}K\]__\[.*\]\.[A-Za-z0-9]+$/g, '')
+  .replace(/[^A-Za-z0-9_\.\,\!\¡\?\¿\-\sÁÉÍÓÚÑÜáéíóúñü]/g, '')
+  .replace(/  /gi, ' ')
+  .replace(/\.mp3/gi, '');
   files.push(file);
-  console.log(("(===) " + file).green);
+  console.log(("(===) " + file + '.mp3').green);
 });
 
 let checkInfo = async (videos) => {
@@ -74,7 +75,11 @@ let checkInfo = async (videos) => {
       continue;
     }
     let name = info.videoDetails.title;
-    name = name.replace(/\\|\/|\:|\*|\?|\"|\<|\>|\|/g, '');
+    name = name
+    .replace(/\[[0-9]{0,3}K\]__\[.*\]\.[A-Za-z0-9]+$/g, '')
+    .replace(/[^A-Za-z0-9_\.\,\!\¡\?\¿\-\sÁÉÍÓÚÑÜáéíóúñü]/g, '')
+    .replace(/  /gi, ' ')
+    .replace(/\.mp3/gi, '');
     let percent = 0;
     if (files.length > 0) {
       let matched = stringSimilarity.findBestMatch(name, files);

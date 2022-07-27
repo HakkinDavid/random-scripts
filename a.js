@@ -1,6 +1,6 @@
-const fs = require('fs');
+import fs from 'fs';
 let file = fs.readFileSync('input.txt', 'utf-8', console.error).split('\n');
-for (i=0; file.length > i; i++) {
+for (let i=0; file.length > i; i++) {
   let index = file[i].search(': ') + 2;
   file[i] = file[i].substring(index);
   if (!file[i].startsWith("https://youtu.be/")) {
