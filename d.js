@@ -1,17 +1,19 @@
-const robot = require("robotjs");
-const fs = require('fs');
-const { stringifyStream, parseChunked } = require('@discoveryjs/json-ext');
-const clipboardy = require('clipboardy');
+import robot from "robotjs";
+import fs from 'fs';
+import jsonext from '@discoveryjs/json-ext';
+const { stringifyStream, parseChunked } = jsonext;
+import clipboardy from 'clipboardy';
 
 let urlsList = fs.readFileSync('urls.txt', 'utf-8', console.error).replace(/youtu.be\//gi, "youtube.com/watch?v=").split('\n');
 let metadataBase;
 robot.setMouseDelay(200);
 
-const ytdl = require('ytdl-core');
-const colors = require('colors');
-const stringSimilarity = require("string-similarity");
+import ytdl from 'ytdl-core';
+import colors from 'colors';
+import stringSimilarity from "string-similarity";
 
-const homedir = require('os').homedir();
+import os from 'os';
+const homedir = os.homedir();
 
 let fetchFolder = homedir + '/Downloads';
 
@@ -29,7 +31,7 @@ fs.readdirSync(fetchFolder).forEach(file => {
   console.log(("(===) " + file).green);
 });
 
-async function checkInfo(videos) {
+let checkInfo = async (videos) => {
   try {
     console.error("Loading chunked database.");
     metadataBase = await parseChunked(fs.createReadStream('linksMetaDataBase.json'));
@@ -38,7 +40,7 @@ async function checkInfo(videos) {
     console.error("Unexpected parsing, attempting to retrieve backup.");
     metadataBase = await parseChunked(fs.createReadStream('linksMetaDataBaseBACKUP.json'));
   }
-  for (i=0; videos.length > i; i++) {
+  for (let i=0; videos.length > i; i++) {
     if (inExit) {
       return;
     }
@@ -105,7 +107,7 @@ async function checkInfo(videos) {
   }
 }
 
-checkInfo(urlsList).catch(console.error);
+await checkInfo(urlsList).catch(console.error);
 let backup = setInterval(async () => {
   if (inExit) {
     clearInterval(backup);
@@ -128,7 +130,7 @@ process.on("SIGINT", async () => {
   console.log("\n");
   console.log("Our paths have parted ways.".brightGreen)
   inExit = true;
-  for (i=0; urlsList.length > i; i++) {
+  for (let i=0; urlsList.length > i; i++) {
     let index = completed.indexOf(urlsList[i]);
     if (index === -1) {
       if (withError[urlsList[i]]) {
