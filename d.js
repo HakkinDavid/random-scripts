@@ -1,3 +1,5 @@
+let dry_run = process.argv.includes('--dry_run'); // do not really do anything, just simulate
+
 import robot from "robotjs";
 import fs from 'fs';
 import jsonext from '@discoveryjs/json-ext';
@@ -20,14 +22,17 @@ let completed = [];
 let files = [];
 let withError = [];
 let missing = [];
+let not_quite = [];
 
 fs.readdirSync(fetchFolder).forEach(file => {
   if (!file.includes('.mp3')) return;
   file = file
   .replace(/\[[0-9]{0,3}K\]__\[.*\]\.[A-Za-z0-9]+$/g, '')
-  .replace(/[^A-Za-z0-9_\.\,\!\¡\?\¿\-\sÁÉÍÓÚÑÜáéíóúñü]/g, '')
+  .replace(/[^A-Za-z0-9_\,\-\sÁÉÍÓÚÑÜáéíóúñü\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\u0400–\u04FF]/g, '')
   .replace(/  /gi, ' ')
-  .replace(/\.mp3/gi, '');
+  .replace(/mp3/gi, '')
+  .replace(/ +$/, '')
+  .replace(/^ +/, '')
   files.push(file);
   console.log(("(===) " + file + '.mp3').green);
 });
@@ -49,7 +54,7 @@ let checkInfo = async (videos) => {
     let url = videos[i];
     let probsError = false;
     let info;
-    if (typeof metadataBase[url] === 'undefined') {
+    if (typeof metadataBase[url] === 'undefined' || Object.keys(metadataBase[url]).length === 0) {
       info = await ytdl.getInfo(url).catch((e) => {
         console.log("Fatal fetching error occured. Skipped: " + url);
         console.log(e);
@@ -77,22 +82,30 @@ let checkInfo = async (videos) => {
     let name = info.videoDetails.title;
     name = name
     .replace(/\[[0-9]{0,3}K\]__\[.*\]\.[A-Za-z0-9]+$/g, '')
-    .replace(/[^A-Za-z0-9_\.\,\!\¡\?\¿\-\sÁÉÍÓÚÑÜáéíóúñü]/g, '')
+    .replace(/[^A-Za-z0-9_\,\-\sÁÉÍÓÚÑÜáéíóúñü\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\u0400–\u04FF]/g, '')
     .replace(/  /gi, ' ')
-    .replace(/\.mp3/gi, '');
+    .replace(/mp3/gi, '')
+    .replace(/ +$/, '')
+    .replace(/^ +/, '');
     let percent = 0;
     if (files.length > 0) {
       let matched = stringSimilarity.findBestMatch(name, files);
       percent = matched.bestMatch.rating*100;
       let prcntStr = "(" + percent + "%) " + name + "\n\u200b[" + files[matched.bestMatchIndex] + "]";
-      if (percent >= 100) {
-        console.log((prcntStr).blue);
+      if (percent >= 95) {
+        if (percent < 100) {
+          console.log((prcntStr).magenta);
+          not_quite.push({res: name, file: files[matched.bestMatchIndex], url});
+        }
+        else {
+          console.log((prcntStr).blue);
+        }
       }
       else {
-        console.log((prcntStr).magenta);
+        console.log((prcntStr).yellow);
       }
     }
-    if (files.length === 0 || percent < 100) {
+    if (!dry_run && (files.length === 0 || percent < 95)) {
       robot.moveMouse(92, 75);
       robot.mouseClick();
       robot.keyTap("a", "control"); robot.keyTap("delete");
@@ -102,8 +115,8 @@ let checkInfo = async (videos) => {
       robot.moveMouse(1882, 78);
       robot.mouseClick();
       if (robot.getMousePos().y !== 78) return;
-      robot.moveMouse(971, 523);
-      if (robot.getPixelColor(971, 523) == '0dd5d8') { robot.mouseClick(); }
+      if (robot.getPixelColor(971, 523) == '35bcbe') { robot.moveMouse(971, 523); robot.mouseClick(); }
+      else if (robot.getPixelColor(974, 527) == '35bcbe') { robot.moveMouse(974, 527); robot.mouseClick(); }
       completed.push(url);
     }
     else {
@@ -114,7 +127,7 @@ let checkInfo = async (videos) => {
 
 await checkInfo(urlsList).catch(console.error);
 let backup = setInterval(async () => {
-  if (inExit) {
+  if (inExit || dry_run) {
     clearInterval(backup);
     return
   }
@@ -151,9 +164,12 @@ process.on("SIGINT", async () => {
       }
     }
   }
-  console.log(("Completed " + completed.length).blue + (" (out of " + urlsList.length +")").cyan + "," + (" skipped " + Object.keys(withError).length + " with errors").red + " and there are " + (missing.length + " missing").brightRed + ".");
-  console.log("Backing up data before exiting.".yellow);
-  await stringifyStream(metadataBase, null, 4).pipe(fs.createWriteStream('linksMetaDataBaseBACKUP.json'))
+  for (let i=0; not_quite.length > i; i++) {
+    console.log("Assumed file ".magenta + (not_quite[i].file).gray + " is resource ".magenta + (not_quite[i].res).gray + " from ".magenta + (not_quite[i].url).gray)
+  }
+  console.log(("Completed " + completed.length).blue + (" [" + not_quite.length + " approximate matches]") + (" (out of " + urlsList.length + ")").cyan + "," + (" skipped " + Object.keys(withError).length + " with errors").red + " and there are " + (missing.length + " missing").brightRed + ".");
+  if (!dry_run) console.log("Backing up data before exiting.".yellow);
+  if (!dry_run) await stringifyStream(metadataBase, null, 4).pipe(fs.createWriteStream('linksMetaDataBaseBACKUP.json'))
     .on('error', (e) => {
       console.error(e);
       process.emit("SIGINT");
@@ -173,4 +189,13 @@ process.on("SIGINT", async () => {
           }
         });
     });
+  else {
+    console.log("Dry run is over.".yellow);
+    try {
+      process.exit();
+    }
+    catch {
+      console.log("What.".red);
+    }
+  };
 });
